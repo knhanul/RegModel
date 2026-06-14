@@ -10,6 +10,7 @@ import sys
 import json
 import subprocess
 import re
+import shutil
 from pathlib import Path
 
 import tkinter as tk
@@ -20,44 +21,44 @@ from tkinter import messagebox
 MODELS = [
     {
         "file": "models/gemma-3-1B-it-Q4_K_M.gguf",
-        "ollama_name": "nuni-gemma3-1b-lite:latest",
+        "ollama_name": "gemma3:1b-q4_k_m",
         "type": "llm",
-        "display_name": "Gemma 3 1B 초경량 테스트용",
+        "display_name": "Gemma 3 (1B, Q4) - 최경량",
         "description": "매우 가벼운 설치 확인용·저사양 PC용 모델입니다. 속도와 메모리 부담은 낮지만 문서 요약, 긴 문서 분석, 참고문서AI 답변 생성 품질은 4B 이상 모델보다 부족할 수 있습니다."
     },
     {
         "file": "models/gemma-3-4B-it-Q4_K_M.gguf",
-        "ollama_name": "nuni-gemma3-4b-stable:latest",
+        "ollama_name": "gemma3:4b-q4_k_m",
         "type": "llm",
-        "display_name": "Gemma 3 4B 안정형",
+        "display_name": "Gemma 3 (4B, Q4) - 표준형",
         "description": "안정적인 문서작성과 요약 작업을 위한 Gemma 3 계열 모델입니다. 기본 모델이 기대와 다를 때 대체 기본 모델로 사용할 수 있습니다."
     },
     {
         "file": "models/gemma-4-E2B-it-Q4_K_M.gguf",
-        "ollama_name": "nuni-gemma4-e2b-fast:latest",
+        "ollama_name": "gemma4:e2b-q4_k_m",
         "type": "llm",
-        "display_name": "Gemma 4 E2B Q4 빠른 업무용",
+        "display_name": "Gemma 4 (E2B, Q4) - 기본형",
         "description": "문서 요약, 문장 다듬기, 일반 질의응답에 사용할 기본 경량 모델입니다. Q4_K_M 양자화 모델로 속도와 용량 부담이 적어 AI마크다운에디터의 기본 문서작성 모델로 추천합니다."
     },
     {
         "file": "models/gemma-4-E2B-it-Q8_0.gguf",
-        "ollama_name": "nuni-gemma4-e2b-quality:latest",
+        "ollama_name": "gemma4:e2b-q8_0",
         "type": "llm",
-        "display_name": "Gemma 4 E2B Q8 품질 우선",
+        "display_name": "Gemma 4 (E2B, Q8) - 경량 정밀형",
         "description": "E2B 계열에서 답변 품질을 조금 더 우선할 때 사용하는 모델입니다. Q4 모델보다 용량과 메모리 부담은 크지만 문장 품질을 더 중요하게 볼 때 선택할 수 있습니다."
     },
     {
         "file": "models/gemma-4-E4B-it-Q4_K_M.gguf",
-        "ollama_name": "nuni-gemma4-e4b-balanced:latest",
+        "ollama_name": "gemma4:e4b-q4_k_m",
         "type": "llm",
-        "display_name": "Gemma 4 E4B 균형형",
-        "description": "속도와 품질의 균형을 보고 사용할 수 있는 대체 LLM 모델입니다. 기본 모델과 비교 테스트하거나 일반 문서 작업용 보조 모델로 사용할 수 있습니다."
+        "display_name": "Gemma 4 (E4B, Q4) - 고성능 추론형",
+        "description": "고성능 추론이 필요한 작업에 적합한 모델입니다. 복잡한 논리 추론, 코드 생성, 고급 문서 분석 등에서 우수한 성능을 발휘합니다."
     },
     {
         "file": "models/embedding/KURE-v1-Q4_K_M.gguf",
-        "ollama_name": "nuni-embed-kure:latest",
+        "ollama_name": "kure:v1-q4_k_m",
         "type": "embedding",
-        "display_name": "KURE-v1 한국어 검색용 임베딩",
+        "display_name": "KURE v1 (Q4) - 문서 검색 전용",
         "description": "AI마크다운에디터의 참고문서AI에서 문서 색인과 검색에 사용할 한국어 특화 embedding 모델입니다. 일반 채팅이나 문장 생성용이 아니라 RAG 검색용 모델입니다."
     }
 ]
@@ -69,7 +70,7 @@ class SimpleOllamaModelRegister:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("간단 Ollama 모델 등록기")
-        self.root.geometry("900x600")
+        self.root.geometry("900x750")
         
         # 프로젝트 루트 경로 결정
         if getattr(sys, 'frozen', False):
@@ -95,9 +96,12 @@ class SimpleOllamaModelRegister:
         # GUI 생성
         self._create_gui()
         
-        # 초기화
-        self._check_ollama()
-        self._refresh_lists()
+        # 초기화 (예외 처리 추가)
+        try:
+            self._check_ollama()
+            self._refresh_lists()
+        except Exception as e:
+            messagebox.showerror("초기화 오류", f"프로그램 초기화 중 오류가 발생했습니다:\n{e}")
     
     def _ensure_directories(self):
         """필요한 디렉토리 생성"""
@@ -146,17 +150,24 @@ class SimpleOllamaModelRegister:
                               font=("맑은 고딕", 10, "bold"))
         left_label.pack(pady=(0, 5))
         
+        # 체크박스 리스트를 위한 캔버스와 스크롤바
         left_list_frame = tk.Frame(left_frame)
         left_list_frame.pack(fill=tk.BOTH, expand=True)
         
-        self.available_listbox = tk.Listbox(left_list_frame, font=("맑은 고딕", 9), 
-                                            selectmode=tk.MULTIPLE)
-        self.available_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.available_listbox.bind('<<ListboxSelect>>', self._on_available_select)
+        self.available_canvas = tk.Canvas(left_list_frame, highlightthickness=0)
+        self.available_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
-        left_scrollbar = tk.Scrollbar(left_list_frame, command=self.available_listbox.yview)
+        left_scrollbar = tk.Scrollbar(left_list_frame, command=self.available_canvas.yview)
         left_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.available_listbox.config(yscrollcommand=left_scrollbar.set)
+        self.available_canvas.config(yscrollcommand=left_scrollbar.set)
+        
+        # 체크박스를 담을 프레임
+        self.available_check_frame = tk.Frame(self.available_canvas)
+        self.available_canvas_window = self.available_canvas.create_window((0, 0), window=self.available_check_frame, anchor="nw")
+        
+        # 체크박스 변수들 저장
+        self.available_check_vars = []
+        self.available_check_buttons = []
         
         # 오른쪽: 등록된 모델
         right_frame = tk.Frame(middle_frame)
@@ -222,14 +233,15 @@ class SimpleOllamaModelRegister:
         """Ollama 사용 가능 여부 확인"""
         try:
             result = subprocess.run(["ollama", "--version"], 
-                                   capture_output=True, text=True, timeout=5)
+                                   capture_output=True, text=True, timeout=5,
+                                   encoding='utf-8', errors='replace')
             if result.returncode == 0:
                 self.ollama_available = True
                 self.status_label.config(text="Ollama 사용 가능", fg="green")
             else:
                 self.ollama_available = False
                 self.status_label.config(text="Ollama가 설치되어 있지 않거나 PATH에 없습니다.", fg="red")
-        except (subprocess.TimeoutExpired, FileNotFoundError):
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
             self.ollama_available = False
             self.status_label.config(text="Ollama가 설치되어 있지 않거나 PATH에 없습니다.", fg="red")
         
@@ -261,23 +273,95 @@ class SimpleOllamaModelRegister:
         
         return []
     
+    def _get_disk_space(self):
+        """디스크 여유 공간 확인 (GB 단위)"""
+        try:
+            usage = shutil.disk_usage(self.root_dir)
+            free_gb = usage.free / (1024 ** 3)
+            return free_gb
+        except Exception:
+            return 0
+    
+    def _get_model_size(self, model_file_path):
+        """모델 파일 크기 확인 (GB 단위)"""
+        try:
+            size_bytes = model_file_path.stat().st_size
+            size_gb = size_bytes / (1024 ** 3)
+            return size_gb
+        except Exception:
+            return 0
+    
+    def _format_size(self, size_gb):
+        """크기를 읽기 쉬운 형식으로 변환"""
+        if size_gb >= 1:
+            return f"{size_gb:.2f} GB"
+        else:
+            size_mb = size_gb * 1024
+            return f"{size_mb:.2f} MB"
+    
     def _refresh_lists(self):
         """목록 새로고침"""
-        # 등록된 모델 목록 가져오기
-        self.registered_models = self._get_registered_models()
-        
-        # 등록 가능한 모델 목록 생성
-        self.available_models = []
-        for model in MODELS:
-            model_file = self.root_dir / model["file"]
-            # 파일이 존재하고 아직 등록되지 않은 모델만
-            if model_file.exists() and model["ollama_name"] not in self.registered_models:
-                self.available_models.append(model)
-        
-        # 왼쪽 목록 업데이트
-        self.available_listbox.delete(0, tk.END)
-        for model in self.available_models:
-            self.available_listbox.insert(tk.END, model["display_name"])
+        try:
+            # 등록된 모델 목록 가져오기
+            self.registered_models = self._get_registered_models()
+            
+            # 등록 가능한 모델 목록 생성
+            self.available_models = []
+            for model in MODELS:
+                model_file = self.root_dir / model["file"]
+                # 파일이 존재하고 아직 등록되지 않은 모델만
+                if model_file.exists() and model["ollama_name"] not in self.registered_models:
+                    self.available_models.append(model)
+            
+            # 왼쪽 목록 업데이트 (체크박스)
+            # 기존 체크박스 제거
+            for widget in self.available_check_frame.winfo_children():
+                widget.destroy()
+            
+            self.available_check_vars = []
+            self.available_check_buttons = []
+            
+            # 디스크 여유 공간 확인
+            free_disk_space = self._get_disk_space()
+            
+            for model in self.available_models:
+                var = tk.BooleanVar()
+                self.available_check_vars.append(var)
+                
+                # 모델 파일 크기 확인
+                model_file = self.root_dir / model["file"]
+                model_size = self._get_model_size(model_file)
+                
+                # 디스크 공간 확인
+                can_register = model_size <= free_disk_space
+                
+                # 체크박스와 라벨을 한 줄에 배치
+                row_frame = tk.Frame(self.available_check_frame)
+                row_frame.pack(fill=tk.X, pady=1)
+                
+                checkbox = tk.Checkbutton(row_frame, variable=var, font=("맑은 고딕", 9),
+                                         state=tk.NORMAL if can_register else tk.DISABLED)
+                checkbox.pack(side=tk.LEFT, padx=5)
+                
+                label = tk.Label(row_frame, text=model["display_name"], font=("맑은 고딕", 9),
+                               fg="black" if can_register else "gray")
+                label.pack(side=tk.LEFT)
+                
+                # 라벨 클릭 시 설명 표시
+                label.bind('<Button-1>', lambda e, m=model, s=model_size, f=free_disk_space: self._on_available_select(m, s, f))
+                
+                self.available_check_buttons.append((checkbox, label, model, can_register))
+            
+            # 캔버스 스크롤 영역 업데이트
+            self.available_check_frame.update_idletasks()
+            bbox = self.available_canvas.bbox("all")
+            if bbox:
+                self.available_canvas.config(scrollregion=bbox)
+            else:
+                self.available_canvas.config(scrollregion=(0, 0, 1, 1))
+        except Exception as e:
+            messagebox.showerror("오류", f"목록 새로고침 중 오류 발생: {e}")
+            return
         
         # 오른쪽 목록 업데이트
         self.registered_listbox.delete(0, tk.END)
@@ -301,13 +385,16 @@ class SimpleOllamaModelRegister:
         managed_count = sum(1 for name in self.registered_models if any(m["ollama_name"] == name for m in MODELS))
         self.registered_count_label.config(text=f"등록된 모델: {managed_count}개 (총 {len(self.registered_models)}개)")
     
-    def _on_available_select(self, event):
+    def _on_available_select(self, model, model_size, free_disk_space):
         """등록 가능 모델 선택 시 설명 표시"""
-        selection = self.available_listbox.curselection()
-        if selection:
-            index = selection[0]
-            model = self.available_models[index]
-            self._show_description(model["display_name"], model["description"])
+        # 디스크 공간 정보 추가
+        size_info = f"\n\n필요 공간: {self._format_size(model_size)} / 여유 공간: {self._format_size(free_disk_space)}"
+        
+        if model_size > free_disk_space:
+            size_info += f"\n⚠️ 디스크 공간 부족으로 등록할 수 없습니다!"
+        
+        description_text = f"파일명: {model['file']}\n표시명: {model['display_name']}\nOllama 등록명: {model['ollama_name']}{size_info}\n\n{model['description']}"
+        self._show_description(model["display_name"], description_text)
     
     def _on_registered_select(self, event):
         """등록된 모델 선택 시 모델명 표시"""
@@ -334,13 +421,14 @@ class SimpleOllamaModelRegister:
     
     def _register_selected(self):
         """선택한 모델 등록"""
-        selection = self.available_listbox.curselection()
-        if not selection:
+        selected_models = []
+        for i, var in enumerate(self.available_check_vars):
+            if var.get():
+                selected_models.append(self.available_models[i])
+        
+        if not selected_models:
             messagebox.showwarning("경고", "등록할 모델을 선택하세요.")
             return
-        
-        # 선택한 모델들
-        selected_models = [self.available_models[i] for i in selection]
         
         # 등록 진행
         success_count = 0

@@ -38,36 +38,36 @@
 
 ### LLM 모델
 
-1. **Gemma 3 1B 초경량 테스트용**
+1. **Gemma 3 (1B, Q4) - 최경량**
    - 파일: `models/gemma-3-1B-it-Q4_K_M.gguf`
-   - Ollama 등록명: `nuni-gemma3-1b-lite:latest`
+   - Ollama 등록명: `gemma3:1b-q4_k_m`
    - 설명: 매우 가벼운 설치 확인용·저사양 PC용 모델입니다.
 
-2. **Gemma 3 4B 안정형**
+2. **Gemma 3 (4B, Q4) - 표준형**
    - 파일: `models/gemma-3-4B-it-Q4_K_M.gguf`
-   - Ollama 등록명: `nuni-gemma3-4b-stable:latest`
+   - Ollama 등록명: `gemma3:4b-q4_k_m`
    - 설명: 안정적인 문서작성과 요약 작업을 위한 Gemma 3 계열 모델입니다.
 
-3. **Gemma 4 E2B Q4 빠른 업무용**
+3. **Gemma 4 (E2B, Q4) - 기본형**
    - 파일: `models/gemma-4-E2B-it-Q4_K_M.gguf`
-   - Ollama 등록명: `nuni-gemma4-e2b-fast:latest`
+   - Ollama 등록명: `gemma4:e2b-q4_k_m`
    - 설명: 문서 요약, 문장 다듬기, 일반 질의응답에 사용할 기본 경량 모델입니다.
 
-4. **Gemma 4 E2B Q8 품질 우선**
+4. **Gemma 4 (E2B, Q8) - 경량 정밀형**
    - 파일: `models/gemma-4-E2B-it-Q8_0.gguf`
-   - Ollama 등록명: `nuni-gemma4-e2b-quality:latest`
+   - Ollama 등록명: `gemma4:e2b-q8_0`
    - 설명: E2B 계열에서 답변 품질을 조금 더 우선할 때 사용하는 모델입니다.
 
-5. **Gemma 4 E4B 균형형**
+5. **Gemma 4 (E4B, Q4) - 고성능 추론형**
    - 파일: `models/gemma-4-E4B-it-Q4_K_M.gguf`
-   - Ollama 등록명: `nuni-gemma4-e4b-balanced:latest`
-   - 설명: 속도와 품질의 균형을 보고 사용할 수 있는 대체 LLM 모델입니다.
+   - Ollama 등록명: `gemma4:e4b-q4_k_m`
+   - 설명: 고성능 추론이 필요한 작업에 적합한 모델입니다.
 
 ### Embedding 모델
 
-1. **KURE-v1 한국어 검색용 임베딩**
+1. **KURE v1 (Q4) - 문서 검색 전용**
    - 파일: `models/embedding/KURE-v1-Q4_K_M.gguf`
-   - Ollama 등록명: `nuni-embed-kure:latest`
+   - Ollama 등록명: `kure:v1-q4_k_m`
    - 설명: AI마크다운에디터의 참고문서AI에서 문서 색인과 검색에 사용할 한국어 특화 embedding 모델입니다.
 
 ## 실행 방법
@@ -172,9 +172,36 @@ AI마크다운에디터는 `generated/installed_models.json` 파일을 읽어 �
 - 절대경로 하드코딩 없음
 - 실행 위치를 프로젝트 루트로 인식
 
+## 실행 파일 생성 (PyInstaller)
+
+PyInstaller를 사용하여 단일 실행 파일로 변환할 수 있습니다.
+
+### PyInstaller 설치
+```bash
+pip install pyinstaller
+```
+
+### 실행 파일 생성 명령어
+
+**콘솔 창 있는 버전 (디버깅용):**
+```bash
+pyinstaller --onefile simple_ollama_model_register.py
+```
+
+**콘솔 창 없는 버전 (일반 사용용):**
+```bash
+pyinstaller --onefile --windowed simple_ollama_model_register.py
+```
+
+**아이콘 지정 (아이콘 파일이 있는 경우):**
+```bash
+pyinstaller --onefile --windowed --icon=icon.ico simple_ollama_model_register.py
+```
+
+생성된 실행 파일은 `dist/` 폴더에 `simple_ollama_model_register.exe`로 생성됩니다.
+
 ## 주의사항
 
 - 이 프로그램은 1회성 모델 등록용으로 설계되었습니다.
 - 복잡한 설정이나 고급 기능은 포함되어 있지 않습니다.
 - 메뉴바, 탭, 로그 폴더 열기, JSON 열기 기능은 없습니다.
-- PyInstaller로 exe 변환 시 `--windowed` 옵션을 사용하면 콘솔 창 없이 실행됩니다.

@@ -47,3 +47,4 @@ modelfiles/
 
 # PyInstaller
 *.spec
+build/
