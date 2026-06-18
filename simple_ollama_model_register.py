@@ -110,6 +110,50 @@ class SimpleOllamaModelRegister:
         self.generated_dir.mkdir(parents=True, exist_ok=True)
         self.modelfiles_dir.mkdir(parents=True, exist_ok=True)
     
+    def _scan_gguf_files(self):
+        """models 폴더에서 gguf 파일 스캔"""
+        gguf_files = []
+        
+        # models 폴더 및 하위 폴더 스캔
+        for gguf_file in self.models_dir.rglob("*.gguf"):
+            relative_path = gguf_file.relative_to(self.root_dir)
+            gguf_files.append(relative_path)
+        
+        return gguf_files
+    
+    def _generate_model_metadata(self, gguf_file):
+        """gguf 파일에서 모델 메타데이터 생성"""
+        # 파일명에서 모델명 추출
+        file_stem = gguf_file.stem  # 확장자 제거
+        
+        # ollama_name 생성 (파일명을 소문자로 변환하고 특수문자 처리)
+        ollama_name = file_stem.lower().replace("_", "-").replace("--", ":")
+        
+        # 이미 콜론이 있는 경우 유지
+        if ":" not in ollama_name:
+            ollama_name = f"{ollama_name}:latest"
+        
+        # display_name 생성
+        display_name = file_stem.replace("-", " ").replace("_", " ").title()
+        
+        # 타입 결정 (embedding 폴더에 있으면 embedding)
+        model_type = "embedding" if "embedding" in str(gguf_file) else "llm"
+        
+        # 설명 생성
+        if model_type == "embedding":
+            description = f"{display_name} - 문서 검색 전용 embedding 모델입니다."
+        else:
+            description = f"{display_name} - LLM 모델입니다."
+        
+        return {
+            "file": str(gguf_file),
+            "ollama_name": ollama_name,
+            "type": model_type,
+            "display_name": display_name,
+            "description": description,
+            "is_dynamic": True  # 동적으로 감지된 모델 표시
+        }
+    
     def _create_gui(self):
         """GUI 생성"""
         # 상단 안내 영역
@@ -307,11 +351,35 @@ class SimpleOllamaModelRegister:
             
             # 등록 가능한 모델 목록 생성
             self.available_models = []
+            
+            # 1. 하드코딩된 MODELS에서 추가
             for model in MODELS:
                 model_file = self.root_dir / model["file"]
                 # 파일이 존재하고 아직 등록되지 않은 모델만
                 if model_file.exists() and model["ollama_name"] not in self.registered_models:
                     self.available_models.append(model)
+            
+            # 2. 동적으로 감지된 gguf 파일에서 추가
+            gguf_files = self._scan_gguf_files()
+            registered_ollama_names = {m["ollama_name"] for m in MODELS}
+            
+            for gguf_file in gguf_files:
+                # 이미 MODELS에 있는 파일은 건너뜀
+                if any(gguf_file == m["file"] for m in MODELS):
+                    continue
+                
+                # 메타데이터 생성
+                model_metadata = self._generate_model_metadata(gguf_file)
+                
+                # 이미 등록된 모델이면 건너뜀
+                if model_metadata["ollama_name"] in self.registered_models:
+                    continue
+                
+                # ollama_name이 이미 MODELS에 있으면 건너뜀 (중복 방지)
+                if model_metadata["ollama_name"] in registered_ollama_names:
+                    continue
+                
+                self.available_models.append(model_metadata)
             
             # 왼쪽 목록 업데이트 (체크박스)
             # 기존 체크박스 제거
