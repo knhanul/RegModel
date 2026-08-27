@@ -31,8 +31,10 @@ class PosidAIModelManager:
 
         if getattr(sys, "frozen", False):
             self.root_dir = Path(sys.executable).parent
+            self.assets_dir = Path(sys._MEIPASS) / "assets"
         else:
             self.root_dir = Path(__file__).parent.resolve()
+            self.assets_dir = self.root_dir / "assets"
         self.models_dir = self.root_dir / "models"
         self.embedding_dir = self.models_dir / "embedding"
         self.generated_dir = self.root_dir / "generated"
@@ -59,7 +61,7 @@ class PosidAIModelManager:
         self.root.after(50, self.refresh)
 
     def _set_window_icon(self):
-        icon_path = self.root_dir / "assets" / "posid" / "posid_logo.ico"
+        icon_path = self.assets_dir / "posid" / "posid_logo.ico"
         if icon_path.exists():
             try:
                 self.root.iconbitmap(str(icon_path))
@@ -75,7 +77,7 @@ class PosidAIModelManager:
         header = ttk.Frame(main, style="Header.TFrame", padding=(0, 0, 0, 14))
         header.grid(row=0, column=0, sticky="ew")
         header.columnconfigure(1, weight=1)
-        logo_path = self.root_dir / "assets" / "posid" / "posid_logo.png"
+        logo_path = self.assets_dir / "posid" / "posid_logo.png"
         if logo_path.exists():
             try:
                 from PIL import Image, ImageTk
